@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Integer, Float, Text, JSON, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, Text, JSON, DateTime, ForeignKey, Index
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.sql import func
@@ -50,6 +51,13 @@ class ContentUnitModel(Base):
     embedding = Column(Vector(1024), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        Index('idx_content_units_embedding', 'embedding', postgresql_using='hnsw',
+              postgresql_with={'m': 16, 'ef_construction': 64},
+              postgresql_ops={'embedding': 'vector_cosine_ops'}),
+        Index('idx_content_units_searchable_text', sql_text("to_tsvector('english', coalesce(searchable_text, ''))"), postgresql_using='gin'),
+    )
 
 class AssetModel(Base):
     __tablename__ = 'assets'

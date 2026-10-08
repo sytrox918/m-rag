@@ -2,7 +2,7 @@ import time
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from config.settings import settings
-from rag.prompts import ANSWER_PROMPT
+from rag.prompts import ANSWER_PROMPT, STANDALONE_QUERY_PROMPT
 from rag.schemas import Answer
 from rag.retriever import HybridRetriever
 from rag.grounding import grounding_checker
@@ -25,11 +25,28 @@ class RAGChain:
         self.structured_llm = self.llm.with_structured_output(Answer)
         self.retriever = HybridRetriever()
 
-    def process(self, question: str):
+    def process(self, question: str, chat_history: list = None):
         start = time.time()
         
+        # Format chat history (Sliding Window: Keep only the last 3 conversational turns to save tokens)
+        formatted_history = ""
+        if chat_history:
+            recent_history = chat_history[-6:] # 3 user + 3 assistant messages
+            for msg in recent_history:
+                formatted_history += f"{msg['role'].upper()}: {msg['content']}\n"
+                
+        # Contextualize query if there is history
+        search_query = question
+        if chat_history:
+            prompt_val = STANDALONE_QUERY_PROMPT.invoke({
+                "chat_history": formatted_history,
+                "question": question
+            })
+            from langchain_core.output_parsers import StrOutputParser
+            search_query = (self.llm | StrOutputParser()).invoke(prompt_val).strip()
+        
         retrieval_start = time.time()
-        docs = self.retriever.invoke(question)
+        docs = self.retriever.invoke(search_query)
         retrieval_time = time.time() - retrieval_start
         
         evidence_pack = []
@@ -60,6 +77,7 @@ class RAGChain:
             claims = []
         else:
             prompt_val = ANSWER_PROMPT.invoke({
+                "chat_history": formatted_history,
                 "evidence_text": evidence_text,
                 "question": question,
                 "grounding_state": grounding_state

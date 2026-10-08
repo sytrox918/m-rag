@@ -16,11 +16,26 @@ class HybridRetriever(BaseRetriever):
         dense_res = dense_retriever.retrieve(query, top_k=self.top_k * 2)
         sparse_res = sparse_retriever.retrieve(query, top_k=self.top_k * 2)
         
-        fused = rrf.fuse(dense_res, sparse_res, top_n=self.top_k)
+        fused = rrf.fuse(dense_res, sparse_res, top_n=self.top_k * 2) # Get more candidates for reranker
+        
+        if not fused:
+            return []
+            
+        # 3. Cross-Encoder Reranking
+        from services.reranker_service import reranker_service
+        
+        # Prepare text passages for the cross-encoder
+        passages = [item['unit'].searchable_text or "" for item in fused]
+        
+        # Rerank and get top K
+        reranked_results = reranker_service.rerank(query, passages, top_k=self.top_k)
         
         docs = []
-        for rank, item in enumerate(fused):
+        for rank, res in enumerate(reranked_results):
+            original_idx = res['index']
+            item = fused[original_idx]
             unit = item['unit']
+            
             docs.append(Document(
                 page_content=unit.searchable_text or "",
                 metadata={
@@ -32,9 +47,12 @@ class HybridRetriever(BaseRetriever):
                     "slide": unit.slide,
                     "start_time": unit.start_time,
                     "end_time": unit.end_time,
-                    "score": item['score'],
+                    "score": res['score'], # Use cross-encoder score
                     "asset_ids": unit.asset_ids,
-                    "page_content": unit.searchable_text
+                    "page_content": unit.searchable_text,
+                    "topics": unit.topics,
+                    "concepts": unit.concepts,
+                    "prerequisites": unit.prerequisites
                 }
             ))
         return docs

@@ -4,11 +4,20 @@ import tempfile
 import yt_dlp
 import cv2
 from pathlib import Path
+import imageio_ffmpeg
 from faster_whisper import WhisperModel
 from scenedetect import detect, ContentDetector
 from ingestion.common.content_units import ContentUnit
 from config.settings import settings
 from storage.vector_store import vector_store
+
+# Monkeypatch PyAV for faster-whisper compatibility with new versions of av
+import av
+_original_av_open = av.open
+def _patched_av_open(*args, **kwargs):
+    kwargs.pop("metadata_errors", None)
+    return _original_av_open(*args, **kwargs)
+av.open = _patched_av_open
 
 class VideoParser:
     def __init__(self):
@@ -22,10 +31,11 @@ class VideoParser:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 1. Download
             ydl_opts = {
-                'format': 'best',
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
                 'outtmpl': f'{tmpdir}/%(id)s.%(ext)s',
                 'quiet': True,
                 'no_warnings': True,
+                'ffmpeg_location': imageio_ffmpeg.get_ffmpeg_exe(),
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -35,9 +45,14 @@ class VideoParser:
                 ext = info.get('ext', 'mp4')
                 video_file = f"{tmpdir}/{video_id}.{ext}"
                 
+                vector_store.save_document(doc_id, doc_name, 'video')
+                
                 # 2. Audio Transcription
                 if not self.model:
-                    self.model = WhisperModel("tiny", device="cpu", compute_type="int8")
+                    import torch
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                    compute_type = "float16" if device == "cuda" else "int8"
+                    self.model = WhisperModel("tiny", device=device, compute_type=compute_type)
                 
                 segments_gen, _ = self.model.transcribe(video_file, beam_size=5)
                 segments = list(segments_gen)

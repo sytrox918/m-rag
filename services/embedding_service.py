@@ -5,11 +5,13 @@ import os
 class EmbeddingService:
     def __init__(self):
         self.model_name = settings.EMBEDDING_MODEL
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         # For bge-m3, we can use HuggingFaceEmbeddings
         self.embeddings = HuggingFaceEmbeddings(
             model_name=self.model_name,
-            model_kwargs={'device': 'cpu'}, # Can be set to cuda if available
-            encode_kwargs={'normalize_embeddings': True}
+            model_kwargs={'device': device}, 
+            encode_kwargs={'normalize_embeddings': True, 'batch_size': 32}
         )
         
     def embed_text(self, text: str) -> list[float]:

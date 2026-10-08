@@ -1,4 +1,4 @@
-import fitz
+import pymupdf
 import uuid
 from pathlib import Path
 from docling.document_converter import DocumentConverter
@@ -19,7 +19,8 @@ class PDFParser:
         doc_name = Path(file_path).name
         
         # 1. Render pages
-        doc_fitz = fitz.open(file_path)
+        vector_store.save_document(doc_id, doc_name, 'pdf')
+        doc_fitz = pymupdf.open(file_path)
         page_assets = {}
         for i in range(len(doc_fitz)):
             page_num = i + 1
@@ -31,6 +32,8 @@ class PDFParser:
             page_assets[page_num] = asset_id
             
             vector_store.save_asset(asset_id, doc_id, str(asset_path), "pdf_page")
+            
+        doc_fitz.close()
             
         # 2. Extract using Docling
         result = self.converter.convert(file_path)

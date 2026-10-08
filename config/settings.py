@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     ANSWER_PROVIDER: str = "groq"
     ANSWER_MODEL: str = "llama-3.1-70b-versatile"
     ANSWER_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
 
     EMBEDDING_MODEL: str = "BAAI/bge-m3"
     RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
