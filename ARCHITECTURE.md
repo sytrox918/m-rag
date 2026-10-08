@@ -17,12 +17,12 @@ flowchart TD
     end
 
     Parsers -->|Extract Text & Images| VLM[Gemini 3.7 Flash API]:::ai
-    VLM -->|Generate Visual Descriptions| Meta[Metadata Extraction\nLlama-3.1 via Groq]:::ai
+    VLM -->|Generate Visual Descriptions| Meta[Metadata Extraction<br>Llama-3.1 via Groq]:::ai
     
-    Meta -->|Extract Topics & Prerequisites| Embed[Embedding Service\nCUDA BGE-M3]:::ai
+    Meta -->|Extract Topics & Prerequisites| Embed[Embedding Service<br>CUDA BGE-M3]:::ai
     
     Embed -->|Dense Vectors & Text| DB[(PostgreSQL + pgvector)]:::db
-    Parsers -.->|Save Raw Images| FS[(Local File System\n/assets/)]:::db
+    Parsers -.->|Save Raw Images| FS[(Local File System<br>/assets/)]:::db
 ```
 
 ## 🔍 2. Advanced Retrieval & Generation (Tutor Chat)
@@ -37,7 +37,7 @@ flowchart TD
     User((User)) -->|Follow-up Question| QueryRewrite
     
     subgraph Conversational Engine
-        QueryRewrite[Query Contextualizer\nLlama-3.1]:::logic
+        QueryRewrite[Query Contextualizer<br>Llama-3.1]:::logic
     end
 
     QueryRewrite -->|Standalone Query| Hybrid[Hybrid Search]:::logic
@@ -54,10 +54,10 @@ flowchart TD
     Dense --> RRF[Reciprocal Rank Fusion]:::logic
     Sparse --> RRF
     
-    RRF -->|Top 20| Reranker[Cross-Encoder Reranker\nBAAI/bge-reranker-v2-m3]:::ai
-    Reranker -->|Top 10| Gen[Answer Generation\nLlama-3.1-70B]:::ai
+    RRF -->|Top 20| Reranker[Cross-Encoder Reranker<br>BAAI/bge-reranker-v2-m3]:::ai
+    Reranker -->|Top 10| Gen[Answer Generation<br>Llama-3.1-70B]:::ai
     
-    Gen -->|Grounded JSON| UI[Streamlit Frontend\nDisplays Text + Rendered Images]:::ui
+    Gen -->|Grounded JSON| UI[Streamlit Frontend<br>Displays Text + Rendered Images]:::ui
 ```
 
 ## 🕸️ 3. True Knowledge Graph Construction
