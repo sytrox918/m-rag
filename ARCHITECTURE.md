@@ -1,55 +1,83 @@
-# Multimodal RAG System Architecture
+# 🏛️ System Architecture
 
-This document maps out the high-performance, asynchronous Multimodal RAG architecture we built for the hackathon.
+This document maps out the high-performance, GPU-accelerated Multimodal RAG architecture.
+
+## 📥 1. Ingestion & Indexing Pipeline
 
 ```mermaid
 flowchart TD
-    classDef frontend fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
-    classDef backend fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
-    classDef worker fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
+    classDef ui fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
     classDef ai fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
     classDef db fill:#64748b,stroke:#334155,stroke-width:2px,color:#fff
 
-    User([User]) -->|Uploads File| UI
-
-    subgraph Frontend
-        UI[Streamlit UI]:::frontend
+    UI[Streamlit Dashboard]:::ui -->|Upload Media| Parsers
+    
+    subgraph Multi-Modal Parsers
+        Parsers[Docling / PyMuPDF / PPTX / Whisper + SceneDetect]
     end
 
-    subgraph Backend Services
-        API[FastAPI Router\n(Port 8000)]:::backend
-        UI -->|HTTP POST /api/ingest| API
-        API -.->|Immediate 200 OK| UI
-        
-        API -->|Queue| Semaphore{GPU\nSemaphore}
-        Semaphore --> Worker[Background Tasks Worker]:::worker
-    end
-
-    subgraph Multimodal Parsers
-        Worker -->|PDF/PPTX| Docling[Docling & PyMuPDF\n(Text & Layout)]:::ai
-        Worker -->|Video URL| Whisper[faster-whisper & scenedetect\n(Audio & Frames)]:::ai
-    end
-
-    subgraph AI Processing Pipeline
-        Docling --> VLM[Groq Vision API\n(llama-3.2-11b-vision)]:::ai
-        Whisper --> VLM
-        
-        VLM -->|Generates Semantic\nVisual Descriptions| Embedder[HuggingFace Embeddings\n(BGE-M3 in Batch)]:::ai
-    end
-
-    subgraph Storage & Indexing
-        Embedder --> DB[(PostgreSQL Database)]:::db
-        DB -.->|Dense Search| pg[pgvector HNSW Index]:::db
-        DB -.->|Sparse Search| ts[tsvector GIN Index]:::db
-        
-        Docling -.->|Saves Extracted\nImages| FS[(Local File System\n/assets/)]:::db
-        Whisper -.->|Saves Extracted\nFrames| FS
-    end
-
-    subgraph Retrieval Pipeline
-        UI -->|Query| Retriever[Hybrid Search Retriever]:::backend
-        Retriever --> DB
-        Retriever -->|Context + Provenance| ChatLLM[Groq Chat API\n(llama-3.1-70b-versatile)]:::ai
-        ChatLLM -->|Grounded Answer| UI
-    end
+    Parsers -->|Extract Text & Images| VLM[Gemini 3.7 Flash API]:::ai
+    VLM -->|Generate Visual Descriptions| Meta[Metadata Extraction\nLlama-3.1 via Groq]:::ai
+    
+    Meta -->|Extract Topics & Prerequisites| Embed[Embedding Service\nCUDA BGE-M3]:::ai
+    
+    Embed -->|Dense Vectors & Text| DB[(PostgreSQL + pgvector)]:::db
+    Parsers -.->|Save Raw Images| FS[(Local File System\n/assets/)]:::db
 ```
+
+## 🔍 2. Advanced Retrieval & Generation (Tutor Chat)
+
+```mermaid
+flowchart TD
+    classDef ui fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
+    classDef ai fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
+    classDef db fill:#64748b,stroke:#334155,stroke-width:2px,color:#fff
+    classDef logic fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+
+    User((User)) -->|Follow-up Question| QueryRewrite
+    
+    subgraph Conversational Engine
+        QueryRewrite[Query Contextualizer\nLlama-3.1]:::logic
+    end
+
+    QueryRewrite -->|Standalone Query| Hybrid[Hybrid Search]:::logic
+    
+    subgraph Vector Database
+        DB[(PostgreSQL)]:::db
+        DB -.-> Dense[pgvector HNSW L2]
+        DB -.-> Sparse[Postgres GIN BM25]
+    end
+    
+    Hybrid --> Dense
+    Hybrid --> Sparse
+    
+    Dense --> RRF[Reciprocal Rank Fusion]:::logic
+    Sparse --> RRF
+    
+    RRF -->|Top 20| Reranker[Cross-Encoder Reranker\nBAAI/bge-reranker-v2-m3]:::ai
+    Reranker -->|Top 10| Gen[Answer Generation\nLlama-3.1-70B]:::ai
+    
+    Gen -->|Grounded JSON| UI[Streamlit Frontend\nDisplays Text + Rendered Images]:::ui
+```
+
+## 🕸️ 3. True Knowledge Graph Construction
+
+```mermaid
+flowchart LR
+    classDef db fill:#64748b,stroke:#334155,stroke-width:2px,color:#fff
+    classDef logic fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+
+    DB[(PostgreSQL JSON Columns)]:::db -->|Query Topics & Prerequisites| NX[NetworkX Graph Builder]:::logic
+    NX -->|Topological Sort| Graph[Interactive PyVis Widget]:::logic
+    Graph -->|Renders UI| Streamlit
+```
+
+## 🛠️ Technology Stack
+*   **Frontend**: Streamlit, PyVis (HTML Components)
+*   **Database**: PostgreSQL, pgvector (HNSW, GIN)
+*   **Vector Embeddings**: `BAAI/bge-m3` (Local, CUDA Accelerated)
+*   **Cross-Encoder**: `BAAI/bge-reranker-v2-m3` (Local, CUDA Accelerated)
+*   **Vision Language Model (VLM)**: Gemini 3.7 Flash API (Cascading Fallbacks)
+*   **Large Language Model (LLM)**: Llama-3.1-70B-Versatile via Groq LPU
+*   **Video Processing**: yt-dlp, faster-whisper, PyAV, scenedetect
+*   **Document Parsing**: Docling, PyMuPDF, python-pptx
