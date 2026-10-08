@@ -15,6 +15,16 @@ class VectorStore:
         finally:
             db.close()
 
+    def save_asset(self, asset_id: str, document_id: str, file_path: str, asset_type: str):
+        db = next(get_db())
+        try:
+            from storage.postgres import AssetModel
+            asset = AssetModel(id=asset_id, document_id=document_id, file_path=file_path, asset_type=asset_type)
+            db.merge(asset)
+            db.commit()
+        finally:
+            db.close()
+
     def save_content_units(self, units: List[ContentUnit]):
         db = next(get_db())
         try:
@@ -40,6 +50,10 @@ class VectorStore:
                     end_time=unit.end_time,
                     bbox=unit.bbox,
                     asset_ids=unit.asset_ids,
+                    extraction_methods=unit.extraction_methods,
+                    extraction_confidence=unit.extraction_confidence,
+                    parent_unit_id=unit.parent_unit_id,
+                    metadata_json=unit.metadata,
                     embedding=unit.embedding
                 )
                 db.merge(db_unit)

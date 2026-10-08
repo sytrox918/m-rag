@@ -32,7 +32,9 @@ class HybridRetriever(BaseRetriever):
                     "slide": unit.slide,
                     "start_time": unit.start_time,
                     "end_time": unit.end_time,
-                    "score": item['score']
+                    "score": item['score'],
+                    "asset_ids": unit.asset_ids,
+                    "page_content": unit.searchable_text
                 }
             ))
         return docs

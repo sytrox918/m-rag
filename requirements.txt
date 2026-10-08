@@ -10,6 +10,8 @@ python-pptx
 yt-dlp
 ffmpeg-python
 faster-whisper
+scenedetect
+pymupdf
 psycopg2-binary
 pgvector
 pydantic

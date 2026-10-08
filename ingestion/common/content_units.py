@@ -30,6 +30,11 @@ class ContentUnit(BaseModel):
 
     asset_ids: List[str] = Field(default_factory=list)
 
+    extraction_methods: Dict[str, str] = Field(default_factory=dict)
+    extraction_confidence: Dict[str, float] = Field(default_factory=dict)
+    parent_unit_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
     embedding: Optional[List[float]] = None
 
     @property

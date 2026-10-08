@@ -27,10 +27,12 @@ with col1:
         
         with st.spinner("Ingesting PDF..."):
             try:
-                ingestion_service.ingest_pdf(tmp_path)
+                metrics = ingestion_service.ingest_pdf(tmp_path)
                 st.success("PDF ingested successfully")
+                st.json(metrics)
             except Exception as e:
-                st.error(f"❌ PDF ingestion failed\nReason: {e}")
+                import traceback
+                st.error(f"❌ PDF ingestion failed\nReason: {e}\n{traceback.format_exc()}")
         try:
             os.unlink(tmp_path)
         except:
@@ -46,10 +48,12 @@ with col2:
             
         with st.spinner("Ingesting PPTX..."):
             try:
-                ingestion_service.ingest_pptx(tmp_path)
+                metrics = ingestion_service.ingest_pptx(tmp_path)
                 st.success("PPTX ingested successfully")
+                st.json(metrics)
             except Exception as e:
-                st.error(f"❌ PPTX ingestion failed\nReason: {e}")
+                import traceback
+                st.error(f"❌ PPTX ingestion failed\nReason: {e}\n{traceback.format_exc()}")
         try:
             os.unlink(tmp_path)
         except:
@@ -61,10 +65,12 @@ with col3:
     if yt_url and st.button("Ingest Video"):
         with st.spinner("Ingesting Video..."):
             try:
-                ingestion_service.ingest_video(yt_url)
+                metrics = ingestion_service.ingest_video(yt_url)
                 st.success("Video ingested successfully")
+                st.json(metrics)
             except Exception as e:
-                st.error(f"❌ Video ingestion failed\nReason: {e}")
+                import traceback
+                st.error(f"❌ Video ingestion failed\nReason: {e}\n{traceback.format_exc()}")
 
 st.divider()
 
@@ -106,7 +112,17 @@ if st.button("Ask") and question:
                         # Show full document context mapping to the evidence ID
                         with st.expander(source_info):
                             st.write(doc['document_name'])
-                            st.text_area("Excerpt", value=doc.get('text', 'No text excerpt available'), height=150, disabled=True)
+                            
+                            content_excerpt = doc.get('page_content', 'No text excerpt available')
+                            if not content_excerpt and 'text' in doc:
+                                content_excerpt = doc['text']
+                                
+                            st.text_area("Excerpt", value=content_excerpt, height=150, disabled=True)
+                            
+                            if doc.get('asset_ids'):
+                                st.write("**Assets:**")
+                                for asset_id in doc['asset_ids']:
+                                    st.write(f"- `{asset_id}`")
                             
             st.divider()
             with st.expander("DEBUG ▼"):

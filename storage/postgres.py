@@ -29,6 +29,11 @@ class ContentUnitModel(Base):
     ocr_text = Column(Text, nullable=True)
     visual_description = Column(Text, nullable=True)
     
+    extraction_methods = Column(JSON, nullable=True)
+    extraction_confidence = Column(JSON, nullable=True)
+    parent_unit_id = Column(String, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    
     equations = Column(JSON, nullable=True)
     tables = Column(JSON, nullable=True)
     topics = Column(JSON, nullable=True)
@@ -44,6 +49,15 @@ class ContentUnitModel(Base):
     
     embedding = Column(Vector(1024), nullable=True)
     
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AssetModel(Base):
+    __tablename__ = 'assets'
+    
+    id = Column(String, primary_key=True)
+    document_id = Column(String, ForeignKey('documents.id'), nullable=False)
+    file_path = Column(String, nullable=False)
+    asset_type = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 engine = create_engine(settings.database_url)

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: Optional[str] = None
     S3_SECRET_KEY: Optional[str] = None
     S3_BUCKET: Optional[str] = None
+    
+    ASSETS_DIR: str = "assets"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

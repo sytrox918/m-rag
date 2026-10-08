@@ -13,37 +13,43 @@ class IngestionService:
         self.video_parser = VideoParser()
 
     def ingest_pdf(self, file_path: str):
-        print(f"Ingesting PDF: {file_path}")
         start = time.time()
-        
         units = self.pdf_parser.parse(file_path)
         if units:
             vector_store.save_document(units[0].document_id, units[0].document_name, 'pdf')
             self._process_and_save_units(units)
             
-        print(f"PDF ingested in {time.time() - start:.2f}s")
+        return {
+            "duration": time.time() - start,
+            "units": len(units),
+            "pages": len(set(u.page for u in units if u.page is not None))
+        }
 
     def ingest_pptx(self, file_path: str):
-        print(f"Ingesting PPTX: {file_path}")
         start = time.time()
-        
         units = self.pptx_parser.parse(file_path)
         if units:
             vector_store.save_document(units[0].document_id, units[0].document_name, 'pptx')
             self._process_and_save_units(units)
             
-        print(f"PPTX ingested in {time.time() - start:.2f}s")
+        return {
+            "duration": time.time() - start,
+            "units": len(units),
+            "slides": len(set(u.slide for u in units if u.slide is not None))
+        }
 
     def ingest_video(self, url: str):
-        print(f"Ingesting Video: {url}")
         start = time.time()
-        
         units = self.video_parser.parse(url)
         if units:
             vector_store.save_document(units[0].document_id, units[0].document_name, 'video')
             self._process_and_save_units(units)
             
-        print(f"Video ingested in {time.time() - start:.2f}s")
+        return {
+            "duration": time.time() - start,
+            "units": len(units),
+            "segments": len(units)
+        }
         
     def _process_and_save_units(self, units):
         # Batch embed
